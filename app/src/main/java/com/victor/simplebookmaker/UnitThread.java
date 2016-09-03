@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit;
 
 public class UnitThread extends Thread {
 
-    private int unitId = 0;
-    private Random generator = new Random();
-    private Handler handler = null;
+    private int unitId;
+    private Handler handler;
     private boolean isRunning = false;
+    private Random generator = new Random();
 
     public static int FREQUENCY = 250;
 
@@ -37,8 +37,11 @@ public class UnitThread extends Thread {
 
         while (isRunning) {
 
+            int nextStep = getRandomStep();
+            boolean nextDirection = nextStep < 40;
+
             handler.sendMessage(Message.obtain(handler, unitId,
-                    new Response(generator.nextInt(50), generator.nextBoolean())
+                    new Response(nextStep, nextDirection)
             ));
 
             try {
@@ -51,5 +54,12 @@ public class UnitThread extends Thread {
 
     public synchronized void stopTask() {
         isRunning = false;
+    }
+
+    private int getRandomStep() {
+
+        int max = 50;
+        int min = 10;
+        return generator.nextInt((max - min) + 1) + min;
     }
 }

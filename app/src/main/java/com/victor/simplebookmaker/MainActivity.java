@@ -7,14 +7,13 @@ import android.os.Message;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
     private Button startButton;
     private Button stopButton;
 
-    private float start;
+    private float start = 0;
     private float finish;
 
     private final int UNITS_NUMBER = 3;
@@ -24,7 +23,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-
             UnitThread.Response response = (UnitThread.Response) msg.obj;
             moveUnit(msg.what, response.step, response.direction);
         }
@@ -45,11 +43,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
         units[1] = findViewById(R.id.unit2);
         units[2] = findViewById(R.id.unit3);
 
-        //todo add correct start and finish
-        LinearLayout track = (LinearLayout) findViewById(R.id.track);
+        final View track = findViewById(R.id.track);
 
-        start = track.getX();
-        finish = track.getX() + track.getWidth();
+        track.post(new Runnable() {
+            @Override
+            public void run() {
+                finish = track.getRight();
+            }
+        });
     }
 
     @Override
@@ -63,18 +64,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
         switch (v.getId()) {
 
             case R.id.buttonStart:
-
-                startButton.setEnabled(false);
-                stopButton.setEnabled(true);
                 startRace();
                 break;
 
             case R.id.buttonStop:
-
                 stopRace();
                 moveUnitsToStart();
-                startButton.setEnabled(true);
-                stopButton.setEnabled(false);
                 break;
         }
     }
@@ -83,29 +78,28 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         ImageView unit = (ImageView) findViewById(unitId);
 
-        float offset = unit.getX() + steps; //* (direction ? 1 : -1);
-        //boolean isFinish = false;
+        float offset = unit.getX() + steps * (direction ? 1 : -1);
+        boolean isFinish = false;
 
-        //todo add logic for check offset
-//        if(offset > finish) {
-//            offset = finish;
-//            isFinish = true;
-//        }
-//        else if(offset <= start) {
-//            offset = -start;
-//        }
+        if(offset + unit.getWidth() > finish) {
+            offset = finish - unit.getWidth();
+            isFinish = true;
+        }
+        else if(offset <= start) {
+            offset = -start;
+        }
 
         unit.animate()
             .x(offset)
             .setDuration(UnitThread.FREQUENCY)
             .start();
 
-//        if(isFinish) {
-//            //todo stop all threads
-//
-//            //todo analyze rate, show info dialog
-//            moveUnitsToStart();
-//        }
+        if(isFinish) {
+
+            //todo analyze rate, show info dialog
+            stopRace();
+            moveUnitsToStart(); //todo move after close dialog
+        }
     }
 
     private void moveUnitsToStart() {
@@ -120,6 +114,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private void startRace() {
 
+        startButton.setEnabled(false);
+        stopButton.setEnabled(true);
+
         for (int i = 0; i < UNITS_NUMBER; i++) {
             unitThreads[i] = new UnitThread(units[i].getId(), handler);
         }
@@ -132,7 +129,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void stopRace() {
 
         for (UnitThread thread : unitThreads) {
-            thread.stopTask();
+            if(thread != null) {
+                thread.stopTask();
+            }
         }
+        startButton.setEnabled(true);
+        stopButton.setEnabled(false);
     }
 }
