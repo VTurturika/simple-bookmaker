@@ -11,19 +11,12 @@ public class UnitThread extends Thread {
     private int unitId;
     private Handler handler;
     private boolean isRunning = false;
+
     private Random generator = new Random();
+    private final int MAX = 30;
+    private final int MIN = 5;
 
-    public static int FREQUENCY = 250;
-
-    public class Response {
-        public int step;
-        public boolean direction;
-
-        public Response(int step, boolean direction) {
-            this.step = step;
-            this.direction = direction;
-        }
-    }
+    public static int FREQUENCY = 300;
 
     public UnitThread(int unitId, Handler handler) {
         this.unitId = unitId;
@@ -38,11 +31,9 @@ public class UnitThread extends Thread {
         while (isRunning) {
 
             int nextStep = getRandomStep();
-            boolean nextDirection = nextStep < 40;
+            int acceleration = nextStep == MAX ? 1 : 0;
 
-            handler.sendMessage(Message.obtain(handler, unitId,
-                    new Response(nextStep, nextDirection)
-            ));
+            handler.sendMessage(Message.obtain(handler, unitId, getRandomStep(), acceleration));
 
             try {
                 TimeUnit.MILLISECONDS.sleep(FREQUENCY);
@@ -56,10 +47,11 @@ public class UnitThread extends Thread {
         isRunning = false;
     }
 
-    private int getRandomStep() {
+    public int getUnitId() {
+        return unitId;
+    }
 
-        int max = 50;
-        int min = 10;
-        return generator.nextInt((max - min) + 1) + min;
+    private int getRandomStep() {
+        return generator.nextInt((MAX - MIN) + 1) + MIN;
     }
 }

@@ -4,29 +4,48 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
     private Button startButton;
     private Button stopButton;
+    private TextView info;
+    private TextView userScoreView;
+    private TextView androidScoreView;
 
     private float start = 0;
     private float finish;
 
-    private final int UNITS_NUMBER = 3;
-    private View[] units = new View[UNITS_NUMBER];
-    private UnitThread[] unitThreads = new UnitThread[UNITS_NUMBER];
+    private Map<Integer, View> units = new HashMap<>();
+    private List<UnitThread> unitThreads = new ArrayList<>();
 
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            UnitThread.Response response = (UnitThread.Response) msg.obj;
-            moveUnit(msg.what, response.step, response.direction);
+
+            moveUnit(msg.what, msg.arg1, msg.arg2 == 1);
         }
     };
+
+    private int userBet;
+    private int androidBet;
+    private int userScore = 0;
+    private int androidScore = 0;
+    private boolean betsMade = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,28 +54,43 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         startButton = (Button) findViewById(R.id.buttonStart);
         stopButton = (Button) findViewById(R.id.buttonStop);
+        Button resetButton = (Button) findViewById(R.id.buttonReset);
 
         startButton.setOnClickListener(this);
         stopButton.setOnClickListener(this);
+        resetButton.setOnClickListener(this);
 
-        units[0] = findViewById(R.id.unit1);
-        units[1] = findViewById(R.id.unit2);
-        units[2] = findViewById(R.id.unit3);
+        info = (TextView) findViewById(R.id.info);
+        userScoreView = (TextView) findViewById(R.id.userScore);
+        androidScoreView = (TextView) findViewById(R.id.androidScore);
 
-        final View track = findViewById(R.id.track);
+        units.put(R.id.unit1, findViewById(R.id.unit1));
+        units.put(R.id.unit2, findViewById(R.id.unit2));
+        units.put(R.id.unit3, findViewById(R.id.unit3));
 
-        track.post(new Runnable() {
-            @Override
-            public void run() {
-                finish = track.getRight();
-            }
-        });
+        for(View unit: units.values()) {
+            unit.setOnClickListener(this);
+        }
+
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        finish = displayMetrics.widthPixels;
+
+        Log.d("My Tag", "finish: " + finish);
+
+//        final View track = findViewById(R.id.track);
+//        track.post(new Runnable() {
+//            @Override
+//            public void run() {
+//                finish = track.getRight();
+//            }
+//        });
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopRace();
+        stopRace(0);
     }
 
     public void onClick(View v) {
@@ -68,25 +102,33 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 break;
 
             case R.id.buttonStop:
-                stopRace();
+                stopRace(0);
                 moveUnitsToStart();
+                break;
+
+            case R.id.buttonReset:
+                //resetScore();
+                moveUnitsToStart();
+                break;
+
+            case R.id.unit1:
+            case R.id.unit2:
+            case R.id.unit3:
+                createBets(v.getId());
                 break;
         }
     }
 
-    private void moveUnit(int unitId, int steps, boolean direction) {
+    private void moveUnit(int unitId, int steps, boolean acceleration) {
 
-        ImageView unit = (ImageView) findViewById(unitId);
+        ImageView unit = (ImageView) units.get(unitId);
 
-        float offset = unit.getX() + steps * (direction ? 1 : -1);
+        float offset = unit.getX() + steps * (acceleration ? 2 : 1);
         boolean isFinish = false;
 
-        if(offset + unit.getWidth() > finish) {
-            offset = finish - unit.getWidth();
+        if(offset + unit.getWidth() + unit.getLeft() > finish) {
+            offset = finish - unit.getWidth() - unit.getLeft();
             isFinish = true;
-        }
-        else if(offset <= start) {
-            offset = -start;
         }
 
         unit.animate()
@@ -96,15 +138,23 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         if(isFinish) {
 
-            //todo analyze rate, show info dialog
-            stopRace();
-            moveUnitsToStart(); //todo move after close dialog
+            stopRace(unitId);
+            determineWinner(unitId);
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    moveUnitsToStart();
+                }
+            }, 1500);
         }
     }
 
     private void moveUnitsToStart() {
 
-        for (View unit : units) {
+        info.setText(getString(R.string.playerChoose));
+        betsMade = false;
+
+        for (View unit : units.values()) {
 
             unit.animate()
                 .x(start)
@@ -116,9 +166,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         startButton.setEnabled(false);
         stopButton.setEnabled(true);
+        info.setText("Racing ...");
 
-        for (int i = 0; i < UNITS_NUMBER; i++) {
-            unitThreads[i] = new UnitThread(units[i].getId(), handler);
+        for (View v : units.values()) {
+           unitThreads.add(new UnitThread(v.getId(), handler));
         }
 
         for (UnitThread thread : unitThreads) {
@@ -126,14 +177,81 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
     }
 
-    private void stopRace() {
+    private void stopRace(int winnerId) {
 
         for (UnitThread thread : unitThreads) {
             if(thread != null) {
                 thread.stopTask();
+                if(winnerId == thread.getUnitId()) {
+                    handler.removeMessages(thread.getUnitId());
+                }
             }
         }
-        startButton.setEnabled(true);
+        unitThreads.clear();
+        startButton.setEnabled(false);
         stopButton.setEnabled(false);
+    }
+
+    private void createBets(int unitId) {
+
+        if(!betsMade) {
+
+            betsMade = true;
+            userBet = unitId;
+            animateChoice(userBet);
+
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    info.setText(getString(R.string.androidChoose));
+                }
+            }, 750);
+
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Random rand = new Random();
+                    int index = rand.nextInt(units.size());
+                    androidBet = ((View)units.values().toArray()[index]).getId();
+                    animateChoice(androidBet);
+                    info.setText("Hit start!");
+                    startButton.setEnabled(true);
+                }
+            }, 1500);
+
+        }
+    }
+
+    private void resetScore() {
+        userScore = 0;
+        androidBet = 0;
+        userScoreView.setText("0");
+        androidScoreView.setText("0");
+    }
+
+    private void determineWinner(int firstUnit) {
+
+        if(firstUnit == userBet && firstUnit == androidBet) {
+            info.setText("Draw");
+        }
+        else if(firstUnit == userBet) {
+            userScoreView.setText(Integer.toString(++userScore));
+            info.setText("You won!");
+        }
+        else if(firstUnit == androidBet) {
+            androidScoreView.setText(Integer.toString(++androidScore));
+            info.setText("Android won!");
+        }
+        else {
+            info.setText("Nobody win");
+        }
+    }
+
+    private void animateChoice(int unitId) {
+
+        View unit = units.get(unitId);
+
+        Animation shakeAnimation = AnimationUtils.loadAnimation(this, R.anim.shake_unit);
+        unit.startAnimation(shakeAnimation);
     }
 }
