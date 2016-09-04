@@ -4,8 +4,6 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -21,17 +19,24 @@ import java.util.Random;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
-    private Button startButton;
+    private Button startPauseButton;
+    private boolean startPauseMode = false; // start == true, pause == false
     private Button stopButton;
     private TextView info;
     private TextView userScoreView;
     private TextView androidScoreView;
 
-    private float start = 0;
-    private float finish;
+    private float finishPosition;
+    private int trackMargin;
 
     private Map<Integer, View> units = new HashMap<>();
     private List<UnitThread> unitThreads = new ArrayList<>();
+
+    private int userBet;
+    private int androidBet;
+    private int userScore = 0;
+    private int androidScore = 0;
+    private boolean isBetsMade = false;
 
     private Handler handler = new Handler() {
         @Override
@@ -41,22 +46,16 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
     };
 
-    private int userBet;
-    private int androidBet;
-    private int userScore = 0;
-    private int androidScore = 0;
-    private boolean betsMade = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        startButton = (Button) findViewById(R.id.buttonStart);
+        startPauseButton = (Button) findViewById(R.id.buttonStartPause);
         stopButton = (Button) findViewById(R.id.buttonStop);
         Button resetButton = (Button) findViewById(R.id.buttonReset);
 
-        startButton.setOnClickListener(this);
+        startPauseButton.setOnClickListener(this);
         stopButton.setOnClickListener(this);
         resetButton.setOnClickListener(this);
 
@@ -68,23 +67,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
         units.put(R.id.unit2, findViewById(R.id.unit2));
         units.put(R.id.unit3, findViewById(R.id.unit3));
 
-        for(View unit: units.values()) {
+        for (View unit : units.values()) {
             unit.setOnClickListener(this);
         }
+        final View track = findViewById(R.id.track);
 
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        finish = displayMetrics.widthPixels;
-
-        Log.d("My Tag", "finish: " + finish);
-
-//        final View track = findViewById(R.id.track);
-//        track.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                finish = track.getRight();
-//            }
-//        });
+        track.post(new Runnable() {
+            @Override
+            public void run() {
+                finishPosition = track.getRight();
+                trackMargin = track.getLeft();
+            }
+        });
     }
 
     @Override
@@ -97,8 +91,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         switch (v.getId()) {
 
-            case R.id.buttonStart:
-                startRace();
+            case R.id.buttonStartPause:
+
+                if(startPauseMode) continueRace();
+                else pauseRace();
                 break;
 
             case R.id.buttonStop:
@@ -107,14 +103,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 break;
 
             case R.id.buttonReset:
-                //resetScore();
-                moveUnitsToStart();
+                resetScore();
                 break;
 
             case R.id.unit1:
             case R.id.unit2:
             case R.id.unit3:
-                createBets(v.getId());
+                makeBetsAndStart(v.getId());
                 break;
         }
     }
@@ -126,8 +121,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
         float offset = unit.getX() + steps * (acceleration ? 2 : 1);
         boolean isFinish = false;
 
-        if(offset + unit.getWidth() + unit.getLeft() > finish) {
-            offset = finish - unit.getWidth() - unit.getLeft();
+        if(offset + unit.getWidth() + trackMargin > finishPosition) {
+            offset = finishPosition - unit.getWidth() - trackMargin;
             isFinish = true;
         }
 
@@ -152,21 +147,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void moveUnitsToStart() {
 
         info.setText(getString(R.string.playerChoose));
-        betsMade = false;
+        isBetsMade = false;
 
         for (View unit : units.values()) {
 
-            unit.animate()
-                .x(start)
-                .start();
+            unit.animate().x(0).start();
         }
+
+        startPauseButton.setEnabled(false);
+        stopButton.setEnabled(false);
     }
 
     private void startRace() {
-
-        startButton.setEnabled(false);
-        stopButton.setEnabled(true);
-        info.setText("Racing ...");
 
         for (View v : units.values()) {
            unitThreads.add(new UnitThread(v.getId(), handler));
@@ -175,6 +167,20 @@ public class MainActivity extends Activity implements View.OnClickListener {
         for (UnitThread thread : unitThreads) {
             thread.start();
         }
+    }
+
+    private void continueRace() {
+
+        startRace();
+        startPauseMode = false;
+        startPauseButton.setText(getString(R.string.pause));
+    }
+
+    private void pauseRace() {
+
+        stopRace(0);
+        startPauseMode = true;
+        startPauseButton.setText(getString(R.string.start));
     }
 
     private void stopRace(int winnerId) {
@@ -187,19 +193,20 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 }
             }
         }
+        startPauseMode = false;
+        startPauseButton.setText(getString(R.string.pause));
         unitThreads.clear();
-        startButton.setEnabled(false);
-        stopButton.setEnabled(false);
     }
 
-    private void createBets(int unitId) {
+    private void makeBetsAndStart(int unitId) {
 
-        if(!betsMade) {
+        if(!isBetsMade) {
 
-            betsMade = true;
+            isBetsMade = true;
             userBet = unitId;
             animateChoice(userBet);
 
+            //emulate android thinking about choice
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -207,17 +214,37 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 }
             }, 750);
 
+            //animate android choice
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
+                    units.remove(userBet);
+
                     Random rand = new Random();
                     int index = rand.nextInt(units.size());
                     androidBet = ((View)units.values().toArray()[index]).getId();
                     animateChoice(androidBet);
-                    info.setText("Hit start!");
-                    startButton.setEnabled(true);
+
+                    units.put(userBet, findViewById(userBet));
                 }
             }, 1500);
+
+            //show countdown
+            int startDelay = 0;
+            for (int i = 3; i >= 0 ; i--) {
+                startDelay = animateCountdown(i);
+            }
+
+            //start race
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    startPauseButton.setEnabled(true);
+                    stopButton.setEnabled(true);
+                    info.setText("");
+                    startRace();
+                }
+            }, startDelay);
 
         }
     }
@@ -232,18 +259,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void determineWinner(int firstUnit) {
 
         if(firstUnit == userBet && firstUnit == androidBet) {
-            info.setText("Draw");
+            info.setText(R.string.drawInfo);
         }
         else if(firstUnit == userBet) {
             userScoreView.setText(Integer.toString(++userScore));
-            info.setText("You won!");
+            info.setText(R.string.userWinInfo);
         }
         else if(firstUnit == androidBet) {
             androidScoreView.setText(Integer.toString(++androidScore));
-            info.setText("Android won!");
+            info.setText(R.string.androidWinInfo);
         }
         else {
-            info.setText("Nobody win");
+            info.setText(R.string.drawInfo);
         }
     }
 
@@ -253,5 +280,25 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         Animation shakeAnimation = AnimationUtils.loadAnimation(this, R.anim.shake_unit);
         unit.startAnimation(shakeAnimation);
+    }
+
+    private int animateCountdown(int count) {
+
+        int animationTime = 1000,
+            initialDelay = 2000,
+            delay = initialDelay + (3 - count)*animationTime;
+
+        final String title = (count == 0 ? "Go!" : Integer.toString(count));
+
+        final Animation countdownAnimation = AnimationUtils.loadAnimation(this, R.anim.countdown_animation);
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                info.setText(title);
+                info.startAnimation(countdownAnimation);
+            }
+        }, delay);
+
+        return delay + animationTime;
     }
 }

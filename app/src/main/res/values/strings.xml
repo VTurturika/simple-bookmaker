@@ -2,11 +2,15 @@
 <resources>
     <string name="app_name">SimpleBookmaker</string>
     <string name="start">Start</string>
+    <string name="pause">Pause</string>
     <string name="stop">Stop</string>
+    <string name="reset">Reset</string>
     <string name="unit">Unit</string>
     <string name="zero_score">0</string>
     <string name="playerChoose">Choose unit</string>
     <string name="androidChoose">Android chooses unit…</string>
-    <string name="reset">Reset</string>
+    <string name="drawInfo">Draw</string>
+    <string name="userWinInfo">You win!</string>
+    <string name="androidWinInfo">Android win!</string>
 
 </resources>
