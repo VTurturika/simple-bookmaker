@@ -16,7 +16,7 @@ public class UnitThread extends Thread {
     private final int MAX = 30;
     private final int MIN = 5;
 
-    public static int FREQUENCY = 300;
+    public static int FREQUENCY = 400;
 
     public UnitThread(int unitId, Handler handler) {
         this.unitId = unitId;

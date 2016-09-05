@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -19,9 +20,9 @@ import java.util.Random;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
-    private Button startPauseButton;
+    private ImageButton startPauseButton;
     private boolean startPauseMode = false; // start == true, pause == false
-    private Button stopButton;
+    private ImageButton stopButton;
     private TextView info;
     private TextView userScoreView;
     private TextView androidScoreView;
@@ -51,9 +52,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        startPauseButton = (Button) findViewById(R.id.buttonStartPause);
-        stopButton = (Button) findViewById(R.id.buttonStop);
-        Button resetButton = (Button) findViewById(R.id.buttonReset);
+        startPauseButton = (ImageButton) findViewById(R.id.buttonStartPause);
+        stopButton = (ImageButton) findViewById(R.id.buttonStop);
+        ImageButton resetButton = (ImageButton) findViewById(R.id.buttonReset);
 
         startPauseButton.setOnClickListener(this);
         stopButton.setOnClickListener(this);
@@ -85,6 +86,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
     protected void onDestroy() {
         super.onDestroy();
         stopRace(0);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if(!startPauseMode) {
+            pauseRace();
+        }
     }
 
     public void onClick(View v) {
@@ -173,14 +182,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         startRace();
         startPauseMode = false;
-        startPauseButton.setText(getString(R.string.pause));
+        startPauseButton.setImageResource(R.drawable.pause);
     }
 
     private void pauseRace() {
 
         stopRace(0);
         startPauseMode = true;
-        startPauseButton.setText(getString(R.string.start));
+        startPauseButton.setImageResource(R.drawable.start);
     }
 
     private void stopRace(int winnerId) {
@@ -194,7 +203,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
             }
         }
         startPauseMode = false;
-        startPauseButton.setText(getString(R.string.pause));
+        startPauseButton.setImageResource(R.drawable.pause);
         unitThreads.clear();
     }
 
@@ -251,7 +260,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private void resetScore() {
         userScore = 0;
-        androidBet = 0;
+        androidScore = 0;
         userScoreView.setText("0");
         androidScoreView.setText("0");
     }
@@ -284,13 +293,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private int animateCountdown(int count) {
 
-        int animationTime = 1000,
+        final Animation countdownAnimation = AnimationUtils.loadAnimation(this, R.anim.countdown_animation);
+
+        int animationTime = (int) countdownAnimation.getDuration(),
             initialDelay = 2000,
             delay = initialDelay + (3 - count)*animationTime;
 
-        final String title = (count == 0 ? "Go!" : Integer.toString(count));
+        final String title = (count == 0 ? "Go! " : Integer.toString(count));
 
-        final Animation countdownAnimation = AnimationUtils.loadAnimation(this, R.anim.countdown_animation);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {

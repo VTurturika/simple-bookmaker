@@ -7,8 +7,8 @@
     <string name="reset">Reset</string>
     <string name="unit">Unit</string>
     <string name="zero_score">0</string>
-    <string name="playerChoose">Choose unit</string>
-    <string name="androidChoose">Android chooses unit…</string>
+    <string name="playerChoose">Select your rider</string>
+    <string name="androidChoose">Android selects rider…</string>
     <string name="drawInfo">Draw</string>
     <string name="userWinInfo">You win!</string>
     <string name="androidWinInfo">Android win!</string>
