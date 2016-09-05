@@ -33,7 +33,7 @@ public class UnitThread extends Thread {
             int nextStep = getRandomStep();
             int acceleration = nextStep == MAX ? 1 : 0;
 
-            handler.sendMessage(Message.obtain(handler, unitId, getRandomStep(), acceleration));
+            handler.sendMessage(Message.obtain(handler, unitId, nextStep, acceleration));
 
             try {
                 TimeUnit.MILLISECONDS.sleep(FREQUENCY);
