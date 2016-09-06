@@ -59,6 +59,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
         stopButton.setOnClickListener(this);
         resetButton.setOnClickListener(this);
 
+        startPauseButton.setEnabled(false);
+        stopButton.setEnabled(false);
+
         info = (TextView) findViewById(R.id.info);
         userScoreView = (TextView) findViewById(R.id.userScore);
         androidScoreView = (TextView) findViewById(R.id.androidScore);

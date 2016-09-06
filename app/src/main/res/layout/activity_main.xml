@@ -90,7 +90,6 @@
                 android:layout_height="wrap_content"
                 android:background="@null"
                 android:contentDescription="@string/stop"
-                android:enabled="false"
                 android:src="@drawable/stop" />
 
             <ImageButton
@@ -99,7 +98,6 @@
                 android:layout_height="wrap_content"
                 android:background="@null"
                 android:contentDescription="@string/pause"
-                android:enabled="false"
                 android:src="@drawable/pause" />
 
         </LinearLayout>
