@@ -28,6 +28,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private float finishPosition;
     private int trackMargin;
+    private float pixelDensity;
 
     private Map<Integer, View> units = new HashMap<>();
     private List<UnitThread> unitThreads = new ArrayList<>();
@@ -82,6 +83,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 trackMargin = track.getLeft();
             }
         });
+
+        pixelDensity = getResources().getDisplayMetrics().density;
     }
 
     @Override
@@ -129,7 +132,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         ImageView unit = (ImageView) units.get(unitId);
 
-        float offset = unit.getX() + steps * (acceleration ? 2 : 1);
+        float offset = unit.getX() + pixelDensity * steps * (acceleration ? 1.2f : 1);
         boolean isFinish = false;
 
         if(offset + unit.getWidth() + trackMargin > finishPosition) {
